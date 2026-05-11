@@ -3,13 +3,6 @@ import { todo } from "node:test"
 import { prisma } from "../../data/postgres"
 
 
-const todos = [
-    { id: 1, text: 'Buy milk', createdAt: new Date() },
-    { id: 2, text: 'Buy bread', createdAt: null },
-    { id: 3, text: 'Buy butter', createdAt: new Date() },
-
-] 
-
 
 
 export class TodosController {
@@ -19,22 +12,27 @@ export class TodosController {
 
     }
 
-    public getTodos = (req: Request, res: Response) => {
+    public getTodos = async(req: Request, res: Response) => {
+
+        const todos = await prisma.todo.findMany();
         return res.json(todos)
     }
 
-    public getTodoById = (req:Request,res:Response) =>{
+    public getTodoById = async (req:Request,res:Response) =>{
 
         const id = +req.params.id!;
         if(isNaN(id)) {
             return res.status(400).json({ error: 'ID must be a number' });
         }
 
-        const todo = todos.find(todo => todo.id === id);
+        const todo = await prisma.todo.findUnique({
+            where: { id:id }
+        })
 
         if (!todo) {
             return res.status(404).json({ error: `Todo with id '${id}' not found` });
         }
+
         res.json(todo);
         
     }
@@ -52,42 +50,55 @@ export class TodosController {
         res.status(201).json(todo);
     }
 
-    public updateTodo = (req:Request,res:Response) =>{
+    public updateTodo = async (req:Request,res:Response) =>{
         const id = +req.params.id!;
         if(isNaN(id)) {
             return res.status(400).json({ error: 'ID must be a number' });
         }
 
-        const todo = todos.find(todo => todo.id === id);
+        const todo = await prisma.todo.findFirst({
+            where: {id:id}
+        });
+
+        // const todo = todos.find(todo => todo.id === id);
         if(!todo) {
             return res.status(404).json({ error: `Todo with id '${id}' not found` });
         }
 
-        const {text,createAt} = req.body;
+        const {text,completedAt} = req.body;
         if(!text) return res.status(400).json({ error: 'Text property is required' });
 
-        todo.text = text;
-        (createAt === "null") 
-        ? todo.createdAt = null 
-        : todo.createdAt = new Date(createAt || todo.createdAt);
+        const updatedTodo = await prisma.todo.update({
+            where: {id:id},
+            data: {
+                text:text,
+                completedAt: completedAt ? new Date(completedAt) : null
+            }
+        })
 
-        res.json(todo);
+        res.json(updatedTodo);
     }
 
-    public deleteTodo = (req:Request,res:Response) =>{
+    public deleteTodo = async (req:Request,res:Response) =>{
         const id = +req.params.id!;
 
         if(isNaN(id)) {
             return res.status(400).json({ error: 'ID must be a number' });
         }
 
-        const todoIndex = todos.findIndex(todo => todo.id === id);
-        if(todoIndex === -1) {
+        const todo = await prisma.todo.findFirst({
+            where: {id:id}
+        })
+        // const todoIndex = todos.findIndex(todo => todo.id === id);
+        if(!todo) {
             return res.status(404).json({ error: `Todo with id '${id}' not found` });
         }
 
-        todos.splice(todoIndex, 1);
-        res.json({ message: `Todo with id '${id}' deleted` });
+        const deleted = await prisma.todo.delete({
+            where: {id:id}
+        })
+
+        res.json({todo,deleted});
     }
     
 
