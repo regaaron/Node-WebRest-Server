@@ -6,8 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch src/app.ts",
-    "build": "rimraf ./dist && tsc",
-    "start": "npm run build && node dist/app.js"
+    "build": "rimraf ./dist && tsc && prisma:generate:prod",
+    "start": "npm run build && node dist/app.js",
+    "prisma:generate:prod": "prisma migrate deploy"
   },
   "keywords": [],
   "author": "",
